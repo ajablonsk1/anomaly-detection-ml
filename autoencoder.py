@@ -9,6 +9,9 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from log_utils import log_experiment, save_run_snapshot
+from datetime import datetime
+
 
 from process_data import X_dos_hulk_test_shared_scaled, X_autoencoder_dos_hulk_train_scaled, \
     X_ftp_patator_test_shared_scaled, X_autoencoder_ftp_patator_train_scaled
@@ -334,6 +337,16 @@ def train_dos_hulk_autoencoder(X_train_scaled, X_test_normal, X_test_attack, bat
     # Plot reconstruction error distribution
     plot_reconstruction_errors(normal_errors, attack_errors, threshold, "DoS Hulk")
 
+    # Log experiment results
+    model_params = {
+        "encoding_dim": 8,
+        "epochs": epochs,
+        "batch_size": batch_size,
+        "input_dim": input_dim,
+        "learning_rate": 0.001
+    }
+    log_experiment(results, model_params, attack_type="DoS Hulk")
+
     return model, results
 
 
@@ -387,6 +400,16 @@ def train_ftp_patator_autoencoder(X_train_scaled, X_test_normal, X_test_attack, 
 
     # Plot reconstruction error distribution
     plot_reconstruction_errors(normal_errors, attack_errors, threshold, "FTP Patator")
+
+    # Log experiment results
+    model_params = {
+        "encoding_dim": 2,
+        "epochs": epochs,
+        "batch_size": batch_size,
+        "input_dim": input_dim,
+        "learning_rate": 0.001
+    }
+    log_experiment(results, model_params, attack_type="FTP Patator")
 
     return model, results
 
@@ -461,6 +484,39 @@ def main():
     os.makedirs("data/autoencoder/model", exist_ok=True)
     torch.save(ftp_patator_model.state_dict(), "data/autoencoder/model/ftp_patator_autoencoder.pth")
     print("FTP Patator model saved as 'data/autoencoder/model/ftp_patator_autoencoder.pth'")
+
+    # Snapshot wszystkich danych i wyników
+    save_run_snapshot({
+        "dos_hulk": {
+            "train_shape": X_autoencoder_dos_hulk_train_scaled.shape,
+            "test_benign_shape": dos_test_normal.shape,
+            "test_attack_shape": dos_test_attack.shape,
+            "results": dos_hulk_results,
+            "model_params": {
+                "encoding_dim": 8,
+                "epochs": 50,
+                "batch_size": 64,
+                "input_dim": X_autoencoder_dos_hulk_train_scaled.shape[1],
+                "learning_rate": 0.001
+            }
+        },
+        "ftp_patator": {
+            "train_shape": X_autoencoder_ftp_patator_train_scaled.shape,
+            "test_benign_shape": ftp_test_normal.shape,
+            "test_attack_shape": ftp_test_attack.shape,
+            "results": ftp_patator_results,
+            "model_params": {
+                "encoding_dim": 2,
+                "epochs": 50,
+                "batch_size": 64,
+                "input_dim": X_autoencoder_ftp_patator_train_scaled.shape[1],
+                "learning_rate": 0.001
+            }
+        }
+    }, extra_meta={
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "host": os.uname().nodename
+    })
 
 
 if __name__ == "__main__":
